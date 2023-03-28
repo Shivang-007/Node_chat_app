@@ -6,36 +6,62 @@ const sendLocation = document.getElementById('send-location')
 const messages = document.getElementById('messages')
 const messageTemplate = document.getElementById('message-template').innerHTML
 const locationMessageTemplate = document.getElementById('location-message-template').innerHTML
-
-
-
-// socket.on('countUpdated',(count) =>{
-//     console.log('count updated!!' + count)
-// })
-
-// document.getElementById('increment').addEventListener('click', () => {
-//     console.log('Clicked')
-//     socket.emit('increment')
-// })
+const sidebarTemplate = document.getElementById('sidebar-template').innerHTML
 
 const { username, room } = Qs.parse(location.search, { ignoreQueryPrefix: true })
+
+const autoScroll = () => {
+    //New message element
+    newMessage = messages.lastElementChild
+    //Height of the new message
+    const newMessageStyle = getComputedStyle(newMessage)
+    const newMessageMargin = parseInt(newMessageStyle.marginBottom)
+    const newMessageHeight = newMessage.offsetHeight + newMessageMargin
+
+    //visible height
+    const visibleHeight = messages.offsetHeight
+
+    //Height of the message container
+    const containerHeight = messages.scrollHeight
+
+    //How far have i scrolled??
+    const scrollOffset= messages.scrollTop + visibleHeight
+    if(containerHeight - newMessageHeight <= scrollOffset){
+        messages.scrollTop = messages.scrollHeight
+    }   
+
+}
 
 socket.on('message', (message) => {
     console.log(message)
     const html = Mustache.render(messageTemplate, {
+        username:message.username,
         message: message.text,
         createdAt: moment(message.createdAt).format('h:mm a')
     })
     messages.insertAdjacentHTML('beforeend', html)
+    autoScroll()
 })
 
 socket.on('locationMessage', (message) => {
     console.log(message)
     const html = Mustache.render(locationMessageTemplate, {
+        username:message.username,
         url: message.url,
         createdAt: moment(message.createdAt).format('h:mm a')
     })
     messages.insertAdjacentHTML('beforeend', html)
+    autoScroll()
+})
+
+socket.on('roomData',({room,users}) => {
+    console.log(room)
+    console.log(users)
+    const html = Mustache.render(sidebarTemplate, {
+        room,
+        users
+    })
+    document.getElementById('sidebar').innerHTML = html
 })
 
 messageForm.addEventListener('submit', (e) => {
@@ -70,4 +96,9 @@ sendLocation.addEventListener('click', () => {
     })
 })
 
-socket.emit('join', { username, room })
+socket.emit('join', { username, room }, (error) => {
+    if(error){
+        alert(error)
+        location.href = '/'
+    }
+})
